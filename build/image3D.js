@@ -4,14 +4,14 @@
 *
 * author 心叶
 *
-* version 2.0.6
+* version 2.0.8
 *
 * build Thu Apr 11 2019
 *
 * Copyright yelloxing
 * Released under the MIT license
 *
-* Date:Tue Jan 14 2020 21:05:53 GMT+0800 (GMT+08:00)
+* Date:Mon Mar 09 2020 03:35:09 GMT+0800 (GMT+08:00)
 */
 
 'use strict';
@@ -25,7 +25,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * 着色器一些公共的方法
      * --------------------------------------------
      * 主要是和生成特定着色器无关的方法
-     * 着色器分为二类：顶点着色器 + 片段着色器
+     * 着色器分为两类：顶点着色器 + 片段着色器
      * 前者用于定义一个点的特性，比如位置，大小，颜色等
      * 后者用于针对每个片段（可以理解为像素）进行处理
      *
@@ -54,7 +54,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
             fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fshaderSource);
         // 创建一个着色器程序
         var glProgram = gl.createProgram();
-        // 把前面创建的二个着色器对象添加到着色器程序中
+        // 把前面创建的两个着色器对象添加到着色器程序中
         gl.attachShader(glProgram, vertexShader);
         gl.attachShader(glProgram, fragmentShader);
         // 把着色器程序链接成一个完整的程序
@@ -69,7 +69,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     /**
      * 缓冲区核心方法
      * --------------------------------------------
-     * 缓冲区分为二种：
+     * 缓冲区分为两种：
      *  1.缓冲区中保存了包含顶点的数据
      *  2.缓冲区保存了包含顶点的索引值
      *
@@ -103,7 +103,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     //      gl.INT              Int32Array
     //      gl.UNSIGNED_INT     Uint32Array
     //      gl.FLOAT            Float32Array
-    // stride相邻二个数据项的字节数
+    // stride相邻两个数据项的字节数
     // offset数据的起点字节位置
     // normalized是否把非浮点型的数据归一化到[0,1]或[-1,1]区间
     var useBuffer = function useBuffer(gl, location, size, type, stride, offset, normalized) {
@@ -762,12 +762,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         };
     }
 
-    /**
-     * 常见的图形数据计算
-     * -------------------------
-     */
-    function $Graphic(CORE, CONFIG) {}
-
     function drawArrays(painter, _this) {
 
         _this.drawPoint = function (first, count) {
@@ -923,6 +917,24 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         };
     }
 
+    var type_default = {
+        vs: '\n    attribute vec4 a_position;\n    attribute vec4 a_color;\n    attribute float a_size;\n    varying vec4 v_color;\n    void main(){\n        gl_Position=a_position;\n        gl_PointSize=a_size;\n        v_color=a_color;\n    }\n    ',
+        fs: '\n    precision mediump float;\n    varying vec4 v_color;\n    void main(){\n        gl_FragColor=v_color;\n    }\n    '
+    };
+
+    var type_camera = {
+        vs: '\n    attribute vec4 a_position;\n    attribute vec4 a_color;\n    attribute float a_size;\n    varying vec4 v_color;\n    uniform mat4 u_matrix;\n    void main(){\n        gl_Position=u_matrix * a_position;\n        gl_PointSize=a_size;\n        v_color=a_color;\n    }\n    ',
+        fs: '\n    precision mediump float;\n    varying vec4 v_color;\n    void main(){\n        gl_FragColor=v_color;\n    }\n    '
+    };
+
+    // 统一管理内置的着色器
+    function $Shader(typeName) {
+        return {
+            type_default: type_default,
+            type_camera: type_camera
+        }["type_" + typeName];
+    }
+
     /**
      * 核心方法
      */
@@ -941,15 +953,25 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         // 启动
         var CORE = core(canvas);
 
+        // 获取着色器
+        var vs = CONFIG["vertex-shader"],
+            fs = CONFIG["fragment-shader"];
+
+        if (!vs || !fs) {
+            // 调用内置的着色器
+            var shader = $Shader(CONFIG.shader || "default");
+            vs = shader.vs;
+            fs = shader.fs;
+        }
+
         // 让着色器生效
-        CORE.shader(config["vertex-shader"], config["fragment-shader"]);
+        CORE.shader(vs, fs);
 
         image3D.fn = image3D.prototype;
 
         // 挂载主要方法
         image3D.fn.Buffer = $Buffer(CORE);
         image3D.fn.Camera = $Camera();
-        image3D.fn.Graphic = $Graphic();
         image3D.fn.Painter = $Painter(CORE, CONFIG);
         image3D.fn.Texture2D = $Texture_2d(CORE);
         image3D.fn.TextureCube = $Texture_cube(CORE);
